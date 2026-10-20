@@ -1,9 +1,5 @@
 package com.example.nhsentranet
 
-import com.example.nhsentranet.ui.screens.RoleBasedDashboard
-import com.example.nhsentranet.ui.screens.AcademicWorkflowScreen
-import com.example.nhsentranet.ui.screens.FormsScreen
-
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
@@ -24,17 +20,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -42,9 +46,46 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContactMail
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,11 +94,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nhsentranet.network.UserSession
+import com.example.nhsentranet.ui.screens.AcademicWorkflowScreen
+import com.example.nhsentranet.ui.screens.FormsScreen
+import com.example.nhsentranet.ui.screens.LoginScreen
+import com.example.nhsentranet.ui.screens.RoleBasedDashboard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,6 +132,16 @@ val NewtonTextMuted = Color(0xFF64748B)
 val NewtonRedMic = Color(0xFFEF4444)
 val NewtonAmberFocus = Color(0xFFF59E0B)
 
+// Exact colors extracted from the Newton House Intranet design
+val NewtonHeaderBg = Color(0xFFCDEBF2)       // Light cyan header banner
+val NewtonTealPrimary = Color(0xFF0D6E7E)     // Dark teal text, borders & button
+val NewtonTealBorder = Color(0xFF389BA8)      // Field border stroke
+val NewtonAlertBg = Color(0xFFE5F4F7)         // Notice box background
+val NewtonDemoBoxBg = Color(0xFFF0F9FB)       // Demo credentials box
+val NewtonDemoBorder = Color(0xFF8CD4DF)      // Dotted/dashed demo border
+val NewtonPillBg = Color(0xFFFFFFFF)          // Credential pill background
+val NewtonFooterBg = Color(0xFFF8FAFC)        // Bottom card footer strip
+
 // =========================================================
 // 2. API CONFIGURATION & DATA MODELS
 // =========================================================
@@ -98,12 +151,6 @@ object ApiConfig {
     const val BACKEND_BASE_URL = "https://10.0.2.2:7322"
     const val GEMINI_FALLBACK_KEY = "YOUR_GEMINI_API_KEY_HERE"
 }
-
-data class UserSession(
-    val username: String,
-    val role: String, // "Student", "Parent", or "Administrator"
-    val token: String? = null
-)
 
 data class ChatMessage(
     val text: String,
@@ -151,190 +198,31 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun NewtonHouseRoot() {
     var currentSession by remember { mutableStateOf<UserSession?>(null) }
+    var isSessionExpired by remember { mutableStateOf(false) }
 
     if (currentSession == null) {
         LoginScreen(
+            sessionExpired = isSessionExpired,
             onLoginSuccess = { session ->
                 currentSession = session
+                isSessionExpired = false
             }
         )
     } else {
+        // Automatically trigger 30-minute inactivity session timeout
+        LaunchedEffect(currentSession) {
+            kotlinx.coroutines.delay(30 * 60 * 1000L) // 30 minutes
+            isSessionExpired = true
+            currentSession = null
+        }
+
         NewtonHousePortal(
             session = currentSession!!,
-            onLogout = { currentSession = null }
-        )
-    }
-}
-
-// =========================================================
-// 4. LOGIN SCREEN (Connects to ASP.NET API)
-// =========================================================
-@Composable
-fun LoginScreen(onLoginSuccess: (UserSession) -> Unit) {
-    val coroutineScope = rememberCoroutineScope()
-
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var selectedRole by remember { mutableStateOf("Student") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    val roles = listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(NewtonNavy)
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(20.dp, RoundedCornerShape(16.dp))
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // School Crest / Icon Header
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(NewtonNavy),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = "Newton House Crest",
-                        tint = Color.White,
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Newton House",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NewtonNavy
-                )
-                Text(
-                    text = "Student & Parent Intranet Portal",
-                    fontSize = 13.sp,
-                    color = NewtonTextMuted
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Role Selector Chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    roles.forEach { role ->
-                        val isSelected = selectedRole == role
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedRole = role },
-                            label = { Text(role, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = NewtonNavy,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it; errorMessage = null },
-                    label = { Text("Username or Email") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = NewtonNavy) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NewtonBlue)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it; errorMessage = null },
-                    label = { Text("Password") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = NewtonNavy) },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Toggle password visibility"
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NewtonBlue)
-                )
-
-                if (errorMessage != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage!!,
-                        color = NewtonRedMic,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Button(
-                    onClick = {
-                        if (username.isBlank() || password.isBlank()) {
-                            errorMessage = "Please enter both your username and password."
-                            return@Button
-                        }
-                        isLoading = true
-                        coroutineScope.launch {
-                            val result = authenticateWithApi(username.trim(), password, selectedRole)
-                            isLoading = false
-                            if (result != null) {
-                                onLoginSuccess(result)
-                            } else {
-                                errorMessage = "Invalid credentials. Please try again."
-                            }
-                        }
-                    },
-                    enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = NewtonNavy),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        Text("Sign In to Portal", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
+            onLogout = {
+                isSessionExpired = false
+                currentSession = null
             }
-        }
+        )
     }
 }
 
@@ -372,8 +260,8 @@ fun NewtonHousePortal(session: UserSession, onLogout: () -> Unit) {
 
     val allSections = listOf(
         PortalSection("/Academic", "Academic Centre", "Marks, Assessments & Reports", Icons.Default.School, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Forms", "Digital Forms", "Consent, Medical & POPIA", Icons.Default.Description, listOf("Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
         PortalSection("/Notices", "Notice Board", "Events, Circulars & Alerts", Icons.Default.Campaign, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
-        PortalSection("/Forms", "Digital Forms", "Consent, Medical & POPIA", Icons.Default.Description, listOf("Student", "Parent", "Teacher", "Admin", "Administrator")),
         PortalSection("/Maps", "Campus Maps", "Parking & Drop-off Zones", Icons.Default.Map, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
         PortalSection("/Contacts", "Contacts Directory", "Teacher Emails & Support", Icons.Default.ContactMail, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
         PortalSection("/Gallery", "Media Gallery", "Photos, Videos & Podcasts", Icons.Default.PhotoLibrary, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),

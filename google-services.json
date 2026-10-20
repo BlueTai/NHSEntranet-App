@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837635976555",
+    "project_id": "nhs-entranet",
+    "storage_bucket": "nhs-entranet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837635976555:android:671cb20c5cadc93994702e",
+        "android_client_info": {
+          "package_name": "com.example.nhsentranet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpBS_KyZWtN1s0TP1IKNzjGExSEHWP-2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
