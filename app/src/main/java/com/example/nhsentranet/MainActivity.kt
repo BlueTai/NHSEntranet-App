@@ -1,5 +1,9 @@
 package com.example.nhsentranet
 
+import com.example.nhsentranet.ui.screens.RoleBasedDashboard
+import com.example.nhsentranet.ui.screens.AcademicWorkflowScreen
+import com.example.nhsentranet.ui.screens.FormsScreen
+
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
@@ -113,6 +117,7 @@ data class PortalSection(
     val title: String,
     val subtitle: String,
     val icon: ImageVector,
+    val allowedRoles: List<String> = listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator"),
     val adminOnly: Boolean = false
 )
 
@@ -175,7 +180,7 @@ fun LoginScreen(onLoginSuccess: (UserSession) -> Unit) {
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val roles = listOf("Student", "Parent", "Administrator")
+    val roles = listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")
 
     Box(
         modifier = Modifier
@@ -366,16 +371,16 @@ fun NewtonHousePortal(session: UserSession, onLogout: () -> Unit) {
     }
 
     val allSections = listOf(
-        PortalSection("/Academic", "Academic Centre", "Marks, Assessments & Reports", Icons.Default.School),
-        PortalSection("/Notices", "Notice Board", "Events, Circulars & Alerts", Icons.Default.Campaign),
-        PortalSection("/Forms", "Digital Forms", "Consent, Medical & POPIA", Icons.Default.Description),
-        PortalSection("/Maps", "Campus Maps", "Parking & Drop-off Zones", Icons.Default.Map),
-        PortalSection("/Contacts", "Contacts Directory", "Teacher Emails & Support", Icons.Default.ContactMail),
-        PortalSection("/Gallery", "Media Gallery", "Photos, Videos & Podcasts", Icons.Default.PhotoLibrary),
-        PortalSection("/Admin", "Admin Console", "Manage Users, Notices & Forms", Icons.Default.AdminPanelSettings, adminOnly = true)
+        PortalSection("/Academic", "Academic Centre", "Marks, Assessments & Reports", Icons.Default.School, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Notices", "Notice Board", "Events, Circulars & Alerts", Icons.Default.Campaign, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Forms", "Digital Forms", "Consent, Medical & POPIA", Icons.Default.Description, listOf("Student", "Parent", "Teacher", "Admin", "Administrator")),
+        PortalSection("/Maps", "Campus Maps", "Parking & Drop-off Zones", Icons.Default.Map, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Contacts", "Contacts Directory", "Teacher Emails & Support", Icons.Default.ContactMail, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Gallery", "Media Gallery", "Photos, Videos & Podcasts", Icons.Default.PhotoLibrary, listOf("Student", "Parent", "Teacher", "Head of Academics", "Admin", "Administrator")),
+        PortalSection("/Admin", "Admin Console", "Manage Users, Notices & Forms", Icons.Default.AdminPanelSettings, listOf("Head of Academics", "Admin", "Administrator"))
     )
 
-    val visibleSections = allSections.filter { !it.adminOnly || session.role == "Administrator" }
+    val visibleSections = allSections.filter { section -> section.allowedRoles.any { role -> role.equals(session.role, ignoreCase = true) } }
 
     Scaffold(
         topBar = {
@@ -423,14 +428,15 @@ fun NewtonHousePortal(session: UserSession, onLogout: () -> Unit) {
                 .padding(innerPadding)
         ) {
             when (currentRoute) {
-                "/Dashboard" -> DashboardScreen(
+                "/Dashboard" -> RoleBasedDashboard(
                     session = session,
-                    sections = visibleSections,
+                    sections = allSections,
                     onNavigate = { route -> currentRoute = route }
                 )
                 else -> SectionDetailScreen(
                     route = currentRoute,
                     sections = visibleSections,
+                    session = session,
                     onBack = { currentRoute = "/Dashboard" }
                 )
             }
@@ -491,95 +497,7 @@ fun NewtonHousePortal(session: UserSession, onLogout: () -> Unit) {
 // 6. DASHBOARD & DETAIL SCREENS
 // =========================================================
 @Composable
-fun DashboardScreen(session: UserSession, sections: List<PortalSection>, onNavigate: (String) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = NewtonNavy),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "Welcome back, ${session.username}",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Logged in as ${session.role}. Access your marks, notices, and forms below, or ask the Newton Navigator assistant.",
-                    color = Color(0xFFCBD5E1),
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = "Intranet Directory",
-            color = NewtonTextDark,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(sections) { section ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, NewtonBorder, RoundedCornerShape(12.dp))
-                        .clickable { onNavigate(section.route) }
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NewtonSlateBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = section.icon,
-                                contentDescription = section.title,
-                                tint = NewtonNavy
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = section.title,
-                            color = NewtonTextDark,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = section.subtitle,
-                            color = NewtonTextMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionDetailScreen(route: String, sections: List<PortalSection>, onBack: () -> Unit) {
+fun SectionDetailScreen(route: String, sections: List<PortalSection>, session: UserSession, onBack: () -> Unit) {
     val section = sections.find { it.route == route }
     Column(
         modifier = Modifier
@@ -621,11 +539,10 @@ fun SectionDetailScreen(route: String, sections: List<PortalSection>, onBack: ()
 
                 when (route) {
                     "/Academic" -> {
-                        Text("Recent Assessment Marks", fontWeight = FontWeight.Bold, color = NewtonNavy)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        MarkRow("Mathematics: Term Test 1", "85 / 100")
-                        MarkRow("Physical Sciences: Practical", "78 / 100")
-                        MarkRow("English Home Language: Essay", "82 / 100")
+                        AcademicWorkflowScreen(role = session.role)
+                    }
+                    "/Forms" -> {
+                        FormsScreen(isAdmin = session.role.equals("Admin", ignoreCase = true) || session.role.equals("Administrator", ignoreCase = true))
                     }
                     "/Notices" -> {
                         Text("Latest Circulars & Alerts", fontWeight = FontWeight.Bold, color = NewtonNavy)
@@ -659,21 +576,6 @@ fun SectionDetailScreen(route: String, sections: List<PortalSection>, onBack: ()
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MarkRow(subject: String, score: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .background(NewtonSlateBg, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(subject, color = NewtonTextDark, fontSize = 14.sp)
-        Text(score, color = NewtonBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 
