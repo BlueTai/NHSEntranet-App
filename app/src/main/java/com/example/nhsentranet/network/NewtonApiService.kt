@@ -1,11 +1,14 @@
 package com.example.nhsentranet.network
 
-import com.example.nhsentranet.ApiConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+
+object ApiConfig {
+    const val BACKEND_BASE_URL = "https://10.0.2.2:7322"
+}
 
 object NewtonApiService {
     var authToken: String? = null

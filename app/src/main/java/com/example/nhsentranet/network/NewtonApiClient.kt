@@ -15,13 +15,22 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
+data class LinkedChildDto(
+    val studentId: Int = 0,
+    val fullName: String = "",
+    val gradeName: String = ""
+)
+
 data class UserSession(
     val userId: Int = 0,
     val username: String,
     val fullName: String = "",
     val role: String,
-    val token: String? = null
-)
+    val token: String? = null,
+    val linkedChildren: List<LinkedChildDto> = emptyList()
+) {
+    val userRole: String get() = role
+}
 
 object NewtonApiClient {
 

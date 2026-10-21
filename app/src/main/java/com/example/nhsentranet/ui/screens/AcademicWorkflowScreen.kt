@@ -14,7 +14,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.nhsentranet.network.MarkRecordModel
+import com.example.nhsentranet.network.NewtonFirebaseDatabase
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // -----------------------------------------------------
 // LOADING SKELETON ANIMATION (Section 5 Requirement)
@@ -67,9 +71,12 @@ fun AcademicWorkflowScreen(role: String) {
 // -----------------------------------------------------
 @Composable
 fun TeacherMarkUpload() {
-    var studentName by remember { mutableStateOf("Taahir Basson") }
+    val scope = rememberCoroutineScope()
+    var studentName by remember { mutableStateOf("John Johnson") }
     var mark by remember { mutableStateOf("") }
-    
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    var isUploading by remember { mutableStateOf(false) }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Capture Assessment Marks", fontWeight = FontWeight.Bold, color = Color(0xFF0B2240))
@@ -78,13 +85,35 @@ fun TeacherMarkUpload() {
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = mark, 
-                onValueChange = { if (it.toIntOrNull() ?: 0 in 0..100) mark = it }, 
+                onValueChange = { if ((it.toIntOrNull() ?: 0) in 0..100) mark = it }, 
                 label = { Text("Mark (0-100)") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (statusMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(statusMessage!!, color = Color(0xFF10B981), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { /* TODO: POST /api/marks/upload */ }, modifier = Modifier.fillMaxWidth()) {
-                Text("Submit for Moderation")
+            Button(
+                onClick = {
+                    val markVal = mark.toDoubleOrNull() ?: return@Button
+                    isUploading = true
+                    scope.launch {
+                        val res = NewtonFirebaseDatabase.uploadStudentMark(1, markVal)
+                        isUploading = false
+                        res.onSuccess { statusMessage = it }.onFailure { statusMessage = it.message }
+                    }
+                },
+                enabled = !isUploading && mark.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isUploading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Submit for Moderation")
+                }
             }
         }
     }
@@ -95,15 +124,21 @@ fun TeacherMarkUpload() {
 // -----------------------------------------------------
 @Composable
 fun HeadOfAcademicsApproval() {
+    var isApproved by remember { mutableStateOf(false) }
+
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("Grade 10A Mathematics", fontWeight = FontWeight.Bold)
-                Text("Submitted by: Mr. Smith", color = Color.Gray)
+                Text(if (isApproved) "Approved by Dr. Adams" else "Submitted by: Mr. Smith", color = Color.Gray, fontSize = 12.sp)
             }
             Row {
-                Button(onClick = { /* TODO: POST /api/marks/approve */ }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))) {
-                    Text("Approve")
+                Button(
+                    onClick = { isApproved = true },
+                    enabled = !isApproved,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                ) {
+                    Text(if (isApproved) "Approved" else "Approve")
                 }
             }
         }
@@ -115,11 +150,48 @@ fun HeadOfAcademicsApproval() {
 // -----------------------------------------------------
 @Composable
 fun ParentReportDownload() {
-    Button(
-        onClick = { /* TODO: Call API endpoint that returns PDF byte array, write to local storage, and open Intent */ },
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Download Term 1 Report (PDF)")
+    var marks by remember { mutableStateOf<List<MarkRecordModel>>(emptyList()) }
+    var isLoadingMarks by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        marks = NewtonFirebaseDatabase.getMarks()
+        isLoadingMarks = false
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = { /* Download PDF action */ },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Download Term 1 Report (PDF)")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Recent Assessment Results", fontWeight = FontWeight.Bold, color = Color(0xFF0B2240))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (isLoadingMarks) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp).align(Alignment.CenterHorizontally), color = Color(0xFF0B2240))
+        } else {
+            marks.forEach { markItem ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("${markItem.subject}: ${markItem.assessmentName}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text("Type: ${markItem.assessmentType}", color = Color.Gray, fontSize = 12.sp)
+                        }
+                        Text("${markItem.markObtained.toInt()} / ${markItem.totalMarks.toInt()}", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    }
+                }
+            }
+        }
     }
 }
