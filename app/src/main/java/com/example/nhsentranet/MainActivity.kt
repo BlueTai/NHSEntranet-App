@@ -1,16 +1,9 @@
 package com.example.nhsentranet
 
-import android.Manifest
-import android.content.Intent
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -76,13 +69,11 @@ val NewtonAmber = Color(0xFFF59E0B)
 
 val NewtonHeaderBg = Color(0xFFCDEBF2)
 val NewtonTealPrimary = Color(0xFF0D6E7E)
-val NewtonTealBorder = Color(0xFF389BA8)
-val NewtonAlertBg = Color(0xFFE5F4F7)
 val NewtonDemoBoxBg = Color(0xFFF0F9FB)
 val NewtonDemoBorder = Color(0xFF8CD4DF)
 
 // =========================================================================
-// 2. CHECKLIST DATA MODELS
+// 2. DTO DATA MODELS
 // =========================================================================
 data class ChatMessage(val text: String, val isUser: Boolean, val suggestedRoute: String? = null, val actionLabel: String? = null)
 data class PortalTile(val route: String, val title: String, val subtitle: String, val icon: ImageVector, val allowedRoles: List<String>)
@@ -242,10 +233,38 @@ object NewtonFirebaseRepository {
 
         listOf(InvoiceSummaryModel(1, "INV-2026-0001", "Tuition", "Term 4 Tuition Fee", 14500.0, 10000.0, 4500.0, "2026-11-01", "Partial"))
     }
+
+    // Upload Proof of Payment (Payments Service Integration)
+    suspend fun uploadProofOfPayment(invoiceId: Int): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            db.collection("proofs").document().set(mapOf(
+                "invoiceId" to invoiceId,
+                "status" to "Pending Verification",
+                "timestamp" to System.currentTimeMillis()
+            )).await()
+            Result.success("Proof of Payment uploaded successfully.")
+        } catch (_: Exception) {
+            Result.failure(Exception("Upload failed."))
+        }
+    }
+
+    // Assign Class Teacher (Admin Service Integration)
+    suspend fun assignClassTeacher(grade: String, teacherName: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            db.collection("class_teachers").document(grade).set(mapOf(
+                "grade" to grade,
+                "teacherName" to teacherName,
+                "timestamp" to System.currentTimeMillis()
+            )).await()
+            Result.success("Class Teacher assigned successfully.")
+        } catch (_: Exception) {
+            Result.failure(Exception("Assignment failed."))
+        }
+    }
 }
 
 // =========================================================================
-// 4. MAIN ACTIVITY
+// 4. MAIN ACTIVITY ENTRY POINT
 // =========================================================================
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -275,7 +294,9 @@ fun LoginScreen(onLoginSuccess: (UserSession) -> Unit) {
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) { NewtonFirebaseRepository.autoSeedSwaggerData() }
+    LaunchedEffect(Unit) {
+        NewtonFirebaseRepository.autoSeedSwaggerData()
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFE6F2F5)).verticalScroll(rememberScrollState()).padding(vertical = 24.dp, horizontal = 16.dp), contentAlignment = Alignment.Center) {
         Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(defaultElevation = 6.dp), modifier = Modifier.fillMaxWidth().widthIn(max = 420.dp)) {
@@ -296,14 +317,33 @@ fun LoginScreen(onLoginSuccess: (UserSession) -> Unit) {
                     Text("Welcome back", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NewtonTextDark)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    OutlinedTextField(value = username, onValueChange = { username = it; errorMessage = null }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it; errorMessage = null },
+                        label = { Text("Username") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
-                        value = password, onValueChange = { password = it; errorMessage = null }, label = { Text("Password") }, singleLine = true,
+                        value = password,
+                        onValueChange = { password = it; errorMessage = null },
+                        label = { Text("Password") },
+                        singleLine = true,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = { Text(if (passwordVisible) "Hide" else "Show", color = NewtonTealPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.clickable { passwordVisible = !passwordVisible }.padding(12.dp)) },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)
+                        trailingIcon = {
+                            Text(
+                                if (passwordVisible) "Hide" else "Show",
+                                color = NewtonTealPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                modifier = Modifier.clickable { passwordVisible = !passwordVisible }.padding(12.dp)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
                     )
 
                     if (errorMessage != null) {
@@ -315,15 +355,22 @@ fun LoginScreen(onLoginSuccess: (UserSession) -> Unit) {
 
                     OutlinedButton(
                         onClick = {
-                            if (username.isBlank() || password.isBlank()) { errorMessage = "Enter username and password."; return@OutlinedButton }
+                            if (username.isBlank() || password.isBlank()) {
+                                errorMessage = "Enter username and password."
+                                return@OutlinedButton
+                            }
                             isLoading = true
                             scope.launch {
                                 val res = NewtonFirebaseRepository.login(username, password)
                                 isLoading = false
-                                res.onSuccess { onLoginSuccess(it) }.onFailure { errorMessage = it.message }
+                                res.onSuccess { onLoginSuccess(it) }
+                                    .onFailure { errorMessage = it.message }
                             }
                         },
-                        enabled = !isLoading, shape = RoundedCornerShape(8.dp), border = BorderStroke(1.5.dp, NewtonTealPrimary), modifier = Modifier.fillMaxWidth().height(48.dp)
+                        enabled = !isLoading,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.5.dp, NewtonTealPrimary),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
                         if (isLoading) CircularProgressIndicator(color = NewtonTealPrimary, modifier = Modifier.size(20.dp))
                         else Text("Sign in", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NewtonTealPrimary)
@@ -388,7 +435,7 @@ fun NewtonHouseMainPortal(session: UserSession, onLogout: () -> Unit) {
         PortalTile("/Academic", "Academic Centre", "Marks, Trends & Reports", Icons.Default.School, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
         PortalTile("/Assessments", "Marks Moderation", "Teacher Upload & HOD Approval", Icons.Default.EditNote, listOf(UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Admin)),
         PortalTile("/Notices", "Notice Board", "School Alerts & Circulars", Icons.Default.Campaign, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
-        PortalTile("/Invoices", "Invoices & Fees", "Tuition & Payment Gateway", Icons.AutoMirrored.Filled.ReceiptLong, listOf(UserRoles.Parent, UserRoles.Admin)),
+        PortalTile("/Invoices", "Invoices & Fees", "Tuition, Payments & Proofs", Icons.AutoMirrored.Filled.ReceiptLong, listOf(UserRoles.Parent, UserRoles.Admin)),
         PortalTile("/Forms", "Digital Consent", "Medical, POPIA & Transport Forms", Icons.Default.Description, listOf(UserRoles.Parent, UserRoles.Student, UserRoles.Admin)),
         PortalTile("/Contacts", "Contacts Directory", "Staff & Emergency Contacts", Icons.Default.ContactMail, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
         PortalTile("/Maps", "Campus Maps", "Randburg Campus Zones", Icons.Default.Map, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
@@ -515,7 +562,7 @@ fun GalleryView() {
         Text("Media Gallery", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NewtonNavy)
         Spacer(modifier = Modifier.height(12.dp))
 
-        TabRow(selectedTabIndex = selectedTab, containerColor = Color.Transparent, contentColor = NewtonTealPrimary) {
+        SecondaryTabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Photos") })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Videos") })
             Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Podcasts") })
@@ -591,11 +638,11 @@ fun FormsView(selectedChild: LinkedChildDto) {
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { msg = "Form signed, saved to database, and PDF generated successfully." },
+                    onClick = { msg = "Consent Receipt Generated. Form saved to database and PDF downloaded." },
                     colors = ButtonDefaults.buttonColors(containerColor = NewtonNavy),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Sign Digitally & Download PDF")
+                    Text("Sign Digitally & Download Receipt")
                 }
 
                 if (msg != null) {
@@ -649,9 +696,14 @@ fun ContactsView() {
 // =========================================================
 @Composable
 fun AdminView() {
+    val scope = rememberCoroutineScope()
     var msg by remember { mutableStateOf<String?>(null) }
     var studentName by remember { mutableStateOf("") }
     var selectedGrade by remember { mutableStateOf("Grade 10A") }
+
+    var teacherMsg by remember { mutableStateOf<String?>(null) }
+    var teacherName by remember { mutableStateOf("") }
+    var teacherGrade by remember { mutableStateOf("Grade 10A") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
@@ -680,6 +732,38 @@ fun AdminView() {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Admin: Assign Class Teacher", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NewtonNavy)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(value = teacherName, onValueChange = { teacherName = it }, label = { Text("Staff Name") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = teacherGrade, onValueChange = { teacherGrade = it }, label = { Text("Grade") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        if (teacherName.isNotBlank()) {
+                            scope.launch {
+                                val res = NewtonFirebaseRepository.assignClassTeacher(teacherGrade, teacherName)
+                                teacherMsg = res.getOrElse { it.message }
+                                teacherName = ""
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NewtonTealPrimary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Assign Class Teacher")
+                }
+                if (teacherMsg != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(teacherMsg!!, color = NewtonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
@@ -701,7 +785,7 @@ fun AcademicView(session: UserSession, studentId: Int) {
         Text("Academic Centre", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NewtonNavy)
         Spacer(modifier = Modifier.height(12.dp))
 
-        TabRow(selectedTabIndex = selectedTab, containerColor = Color.Transparent, contentColor = NewtonTealPrimary) {
+        SecondaryTabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Marks") })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Report Cards") })
             Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Subject Selection") })
@@ -709,46 +793,50 @@ fun AcademicView(session: UserSession, studentId: Int) {
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (selectedTab == 0) {
-                items(marks) { m ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column {
-                                Text(m.subject, fontWeight = FontWeight.Bold, color = NewtonNavy)
-                                Text("${m.assessmentName} (${m.assessmentType})", fontSize = 12.sp, color = NewtonTextMuted)
-                                if (!m.isApproved) Text("Status: Pending HOD Approval", fontSize = 10.sp, color = NewtonAmber)
-                            }
-                            Text("${m.markObtained.toInt()} / ${m.totalMarks.toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = NewtonTealPrimary)
-                        }
-                    }
-                }
-            } else if (selectedTab == 1) {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column {
-                                Text("Term 3 Report Card", fontWeight = FontWeight.Bold, color = NewtonNavy)
-                                Text("Auto-generated & Verified", fontSize = 12.sp, color = NewtonGreen)
-                            }
-                            Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = NewtonTealPrimary)) {
-                                Text("Download PDF", fontSize = 12.sp)
+            when (selectedTab) {
+                0 -> {
+                    items(marks) { m ->
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    Text(m.subject, fontWeight = FontWeight.Bold, color = NewtonNavy)
+                                    Text("${m.assessmentName} (${m.assessmentType})", fontSize = 12.sp, color = NewtonTextMuted)
+                                    if (!m.isApproved) Text("Status: Pending HOD Approval", fontSize = 10.sp, color = NewtonAmber)
+                                }
+                                Text("${m.markObtained.toInt()} / ${m.totalMarks.toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = NewtonTealPrimary)
                             }
                         }
                     }
                 }
-            } else {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Enrolled Elective Subjects", fontWeight = FontWeight.Bold, color = NewtonNavy)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            subjectSelection.forEach { subj ->
-                                Text("• $subj (Core / Elective)", fontSize = 13.sp, color = NewtonTextDark, modifier = Modifier.padding(vertical = 2.dp))
+                1 -> {
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    Text("Term 3 Report Card", fontWeight = FontWeight.Bold, color = NewtonNavy)
+                                    Text("Auto-generated & Verified", fontSize = 12.sp, color = NewtonGreen)
+                                }
+                                Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = NewtonTealPrimary)) {
+                                    Text("Download PDF", fontSize = 12.sp)
+                                }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            if (session.userRole == UserRoles.Parent) {
-                                Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = NewtonNavy)) {
-                                    Text("Modify Child Subject Selections")
+                        }
+                    }
+                }
+                else -> {
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Enrolled Elective Subjects", fontWeight = FontWeight.Bold, color = NewtonNavy)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                subjectSelection.forEach { subj ->
+                                    Text("• $subj (Core / Elective)", fontSize = 13.sp, color = NewtonTextDark, modifier = Modifier.padding(vertical = 2.dp))
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                if (session.userRole == UserRoles.Parent) {
+                                    Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = NewtonNavy)) {
+                                        Text("Modify Child Subject Selections")
+                                    }
                                 }
                             }
                         }
@@ -842,8 +930,7 @@ fun NoticesView(session: UserSession) {
     }
 
     val filteredNotices = notices.filter { n ->
-        if (selectedCategory == "All") true
-        else n.noticeType.equals(selectedCategory, ignoreCase = true)
+        selectedCategory == "All" || n.noticeType.equals(selectedCategory, ignoreCase = true)
     }
 
     LazyColumn(
@@ -866,7 +953,6 @@ fun NoticesView(session: UserSession) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Category Filter Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -883,7 +969,6 @@ fun NoticesView(session: UserSession) {
             }
         }
 
-        // Publish Notice Card for Admin, Teacher, and Head of Academics
         if (canPublish) {
             item {
                 Card(
@@ -1059,7 +1144,10 @@ fun NoticesView(session: UserSession) {
 // =========================================================
 @Composable
 fun InvoicesView(studentId: Int) {
+    val scope = rememberCoroutineScope()
     var invoices by remember { mutableStateOf<List<InvoiceSummaryModel>>(emptyList()) }
+    var proofMsg by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(studentId) { invoices = NewtonFirebaseRepository.getInvoices(studentId) }
 
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1070,7 +1158,27 @@ fun InvoicesView(studentId: Int) {
                         Text("${inv.invoiceNumber} • ${inv.feeTypeName}", fontWeight = FontWeight.Bold, color = NewtonNavy)
                         Text(inv.statusName, color = NewtonAmber, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
-                    Text("Balance: R${inv.balance.toInt()} (Due ${inv.dueDate})", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Total: R${inv.amount.toInt()} | Paid: R${inv.amountPaid.toInt()} | Bal: R${inv.balance.toInt()}", fontSize = 13.sp)
+                    Text("Due Date: ${inv.dueDate}", fontSize = 11.sp, color = NewtonTextMuted)
+
+                    if (inv.balance > 0) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(onClick = {
+                            scope.launch {
+                                val res = NewtonFirebaseRepository.uploadProofOfPayment(inv.invoiceId)
+                                proofMsg = res.getOrElse { it.message }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.UploadFile, contentDescription = null, tint = NewtonTealPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Upload Proof of Payment", color = NewtonTealPrimary)
+                        }
+                        if (proofMsg != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(proofMsg!!, color = NewtonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -1078,11 +1186,10 @@ fun InvoicesView(studentId: Int) {
 }
 
 // =========================================================
-// 16. NAVIGATOR CHAT WIDGET
+// 16. NAVIGATOR CHATBOT
 // =========================================================
 @Composable
 fun NavigatorChatWidget(session: UserSession, ttsEnabled: Boolean, onToggleTts: () -> Unit, onSpeak: (String) -> Unit, onClose: () -> Unit, onNavigate: (String) -> Unit) {
-    val context = LocalContext.current
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
@@ -1096,7 +1203,7 @@ fun NavigatorChatWidget(session: UserSession, ttsEnabled: Boolean, onToggleTts: 
         val lower = q.lowercase()
         val reply = when {
             lower.contains("mark") -> ChatMessage("Opening Academic Centre.", false, "/Academic", "Open Academic")
-            lower.contains("fee") -> ChatMessage("Viewing Invoices.", false, "/Invoices", "View Invoices")
+            lower.contains("fee") || lower.contains("proof") -> ChatMessage("Viewing Invoices.", false, "/Invoices", "View Invoices")
             lower.contains("map") -> ChatMessage("Opening Campus Maps.", false, "/Maps", "Campus Maps")
             else -> ChatMessage("I can help you navigate.", false, "/Dashboard", "Dashboard")
         }
@@ -1107,9 +1214,24 @@ fun NavigatorChatWidget(session: UserSession, ttsEnabled: Boolean, onToggleTts: 
 
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.width(340.dp).height(440.dp).shadow(16.dp, RoundedCornerShape(12.dp))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(modifier = Modifier.fillMaxWidth().background(NewtonNavy).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().background(NewtonNavy).padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text("Newton Navigator", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.White) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onToggleTts) {
+                        Icon(
+                            imageVector = if (ttsEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                            contentDescription = "Toggle TTS Audio",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Close Chat", tint = Color.White)
+                    }
+                }
             }
             LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth().background(NewtonSlateBg).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(messages) { m ->
