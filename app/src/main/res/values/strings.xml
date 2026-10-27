@@ -1,3 +1,26 @@
 <resources>
     <string name="app_name">NHS Entranet</string>
+    <string name="school_title">Newton House Intranet</string>
+    <string name="student_intranet">STUDENT INTRANET</string>
+    <string name="welcome_back">Welcome back</string>
+    <string name="welcome">Welcome</string>
+    <string name="sign_in">Sign in</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="show">Show</string>
+    <string name="hide">Hide</string>
+    <string name="demo_accounts">Demo accounts:</string>
+    <string name="academic_centre">Academic Centre</string>
+    <string name="marks_moderation">Marks Moderation</string>
+    <string name="notice_board">Notice Board</string>
+    <string name="invoices_and_fees">Invoices &amp; Fees</string>
+    <string name="digital_consent">Digital Consent</string>
+    <string name="contacts_directory">Contacts Directory</string>
+    <string name="campus_maps">Campus Maps</string>
+    <string name="media_gallery">Media Gallery</string>
+    <string name="admin_console">Admin Console</string>
+    <string name="newton_navigator">Newton Navigator</string>
+    <string name="back">Back</string>
+    <string name="publish">Publish</string>
 </resources>
