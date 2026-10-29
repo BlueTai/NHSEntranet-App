@@ -3,15 +3,12 @@ package com.example.nhsentranet.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,14 +28,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nhsentranet.R
+import com.example.nhsentranet.data.NewtonFirebaseRepository
 import com.example.nhsentranet.ui.components.DemoRow
 import com.example.nhsentranet.ui.theme.*
 import com.example.nhsentranet.ui.viewmodels.AuthViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: (() -> Unit)? = null
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -166,6 +166,16 @@ fun LoginScreen(
                         }
                     }
 
+                    if (onNavigateToRegister != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextButton(
+                            onClick = onNavigateToRegister,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("New Parent? Register Here", color = NewtonNavy, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Box(
@@ -208,6 +218,91 @@ fun LoginScreen(
                             DemoRow("Parent:", "sjohnson", "Parent@123") { u, p -> username = u; password = p }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RegisterScreen(onBackToLogin: () -> Unit, onRegisterSuccess: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var user by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    var first by remember { mutableStateOf("") }
+    var last by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var idNum by remember { mutableStateOf("") }
+    var gender by remember { mutableStateOf("") }
+    var msg by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFE6F2F5))
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 420.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                Text("Parent Registration", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NewtonTextDark)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(value = user, onValueChange = { user = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = first, onValueChange = { first = it }, label = { Text("First Name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = last, onValueChange = { last = it }, label = { Text("Last Name") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = idNum, onValueChange = { idNum = it }, label = { Text("SA ID Number") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = gender, onValueChange = { gender = it }, label = { Text("Gender") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        isSubmitting = true
+                        scope.launch {
+                            val res = NewtonFirebaseRepository.getInstance().registerParent(user, pass, first, last, email, idNum, gender)
+                            isSubmitting = false
+                            if (res.isSuccess) {
+                                onRegisterSuccess()
+                            } else {
+                                msg = res.exceptionOrNull()?.message
+                            }
+                        }
+                    },
+                    enabled = !isSubmitting && user.isNotBlank() && pass.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = NewtonNavy),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Register Account", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
+                    Text("Back to Login", color = NewtonTealPrimary)
+                }
+
+                if (msg != null) {
+                    Text(msg!!, color = NewtonRed, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }

@@ -1,9 +1,11 @@
 package com.example.nhsentranet.data
 
+import com.example.nhsentranet.model.IncidentDto
 import com.example.nhsentranet.model.InvoiceSummaryModel
 import com.example.nhsentranet.model.LinkedChildDto
 import com.example.nhsentranet.model.MarkRecordModel
 import com.example.nhsentranet.model.NoticeModel
+import com.example.nhsentranet.model.TransportRouteDto
 import com.example.nhsentranet.model.UserRoles
 import com.example.nhsentranet.model.UserSession
 import com.google.firebase.firestore.FirebaseFirestore
@@ -194,6 +196,66 @@ class NewtonFirebaseRepository private constructor() {
         } catch (_: Exception) {
             Result.failure(Exception("Assignment failed."))
         }
+    }
+
+    suspend fun registerParent(user: String, pass: String, first: String, last: String, email: String, idNum: String, gender: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val clean = user.trim().lowercase()
+            val exists = db.collection("users").document(clean).get().await().exists()
+            if (exists) return@withContext Result.failure(Exception("Username already exists."))
+
+            db.collection("users").document(clean).set(mapOf(
+                "userId" to (100..999).random(),
+                "username" to clean,
+                "password" to pass,
+                "fullName" to "$first $last",
+                "email" to email,
+                "userRole" to UserRoles.Parent,
+                "idNumber" to idNum,
+                "gender" to gender
+            )).await()
+            Result.success("Parent account registered successfully.")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTransportRoutes(): List<TransportRouteDto> = withContext(Dispatchers.IO) {
+        listOf(
+            TransportRouteDto("Route A - North Suburbs", "Mr. Smith", "082 123 4567", "15:30", "On Time"),
+            TransportRouteDto("Route B - South Suburbs", "Mrs. Jones", "083 765 4321", "15:45", "Delayed (Traffic)"),
+            TransportRouteDto("Route C - East Suburbs", "Mr. Brown", "084 555 1234", "15:30", "On Time")
+        )
+    }
+
+    suspend fun getOpenIncidents(): List<IncidentDto> = withContext(Dispatchers.IO) {
+        try {
+            val snap = db.collection("incidents").whereEqualTo("status", "Open").get().await()
+            val list = snap.documents.mapNotNull { d ->
+                IncidentDto(
+                    incidentId = (d.getLong("incidentId") ?: 1L).toInt(),
+                    studentName = d.getString("studentName") ?: "Unknown",
+                    category = d.getString("category") ?: "General",
+                    description = d.getString("description") ?: "",
+                    severity = (d.getLong("severity") ?: 1L).toInt(),
+                    status = d.getString("status") ?: "Open",
+                    occurredAt = d.getString("occurredAt") ?: "Today"
+                )
+            }
+            if (list.isNotEmpty()) return@withContext list
+        } catch (_: Exception) {}
+
+        listOf(
+            IncidentDto(1, "John Johnson", "Behavior", "Late for morning registration", 1, "Open", "Today")
+        )
+    }
+
+    suspend fun getMedia(): List<com.example.nhsentranet.model.MediaDto> = withContext(Dispatchers.IO) {
+        listOf(
+            com.example.nhsentranet.model.MediaDto(1, "Inter-House Athletics", "Photo", "azure_blob_url_1"),
+            com.example.nhsentranet.model.MediaDto(2, "Grease Production Trailer", "Video", "azure_blob_url_2"),
+            com.example.nhsentranet.model.MediaDto(3, "Student Wellness Ep 1", "Podcast", "azure_blob_url_3")
+        )
     }
 
     companion object {

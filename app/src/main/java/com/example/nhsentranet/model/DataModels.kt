@@ -56,6 +56,31 @@ data class InvoiceSummaryModel(
     val statusName: String
 )
 
+data class TransportRouteDto(
+    val routeName: String,
+    val driverName: String,
+    val driverPhone: String,
+    val eta: String,
+    val status: String
+)
+
+data class IncidentDto(
+    val incidentId: Int,
+    val studentName: String,
+    val category: String,
+    val description: String,
+    val severity: Int,
+    val status: String,
+    val occurredAt: String
+)
+
+data class MediaDto(
+    val id: Int,
+    val title: String,
+    val type: String,
+    val url: String
+)
+
 data class ChatMessage(
     val text: String,
     val isUser: Boolean,

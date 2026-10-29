@@ -48,10 +48,13 @@ object Routes {
     const val NOTICES = "notices"
     const val INVOICES = "invoices"
     const val FORMS = "forms"
+    const val TRANSPORT = "transport"
+    const val WELLNESS = "wellness"
     const val CONTACTS = "contacts"
     const val MAPS = "maps"
     const val GALLERY = "gallery"
     const val ADMIN = "admin"
+    const val SETTINGS = "settings"
 }
 
 class MainActivity : ComponentActivity() {
@@ -61,12 +64,21 @@ class MainActivity : ComponentActivity() {
             NewtonHouseTheme {
                 val authViewModel: AuthViewModel = viewModel()
                 val session by authViewModel.session.collectAsState()
+                var isRegistering by remember { mutableStateOf(false) }
 
                 if (session == null) {
-                    LoginScreen(
-                        authViewModel = authViewModel,
-                        onLoginSuccess = {}
-                    )
+                    if (isRegistering) {
+                        RegisterScreen(
+                            onBackToLogin = { isRegistering = false },
+                            onRegisterSuccess = { isRegistering = false }
+                        )
+                    } else {
+                        LoginScreen(
+                            authViewModel = authViewModel,
+                            onLoginSuccess = {},
+                            onNavigateToRegister = { isRegistering = true }
+                        )
+                    }
                 } else {
                     NewtonHouseAppScaffold(
                         session = session!!,
@@ -122,6 +134,8 @@ fun NewtonHouseAppScaffold(
         PortalTile("notices", stringResource(R.string.notice_board), "School Alerts & Circulars", Icons.Default.Campaign, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
         PortalTile("invoices", stringResource(R.string.invoices_and_fees), "Tuition, Payments & Proofs", Icons.AutoMirrored.Filled.ReceiptLong, listOf(UserRoles.Parent, UserRoles.Admin)),
         PortalTile("forms", stringResource(R.string.digital_consent), "Medical, POPIA & Transport Forms", Icons.Default.Description, listOf(UserRoles.Parent, UserRoles.Student, UserRoles.Admin)),
+        PortalTile("transport", "Bus Routes", "Live Transport Status", Icons.Default.DirectionsBus, listOf(UserRoles.Parent, UserRoles.Student, UserRoles.Admin)),
+        PortalTile("wellness", "Wellness Center", "Student Support & Incidents", Icons.Default.HealthAndSafety, listOf(UserRoles.Admin, UserRoles.HeadOfDepartment, UserRoles.Teacher)),
         PortalTile("contacts", stringResource(R.string.contacts_directory), "Staff & Emergency Contacts", Icons.Default.ContactMail, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
         PortalTile("maps", stringResource(R.string.campus_maps), "Randburg Campus Zones", Icons.Default.Map, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
         PortalTile("gallery", stringResource(R.string.media_gallery), "Photos & Podcasts", Icons.Default.PhotoLibrary, listOf(UserRoles.Admin, UserRoles.Teacher, UserRoles.HeadOfDepartment, UserRoles.Parent, UserRoles.Student)),
@@ -154,6 +168,9 @@ fun NewtonHouseAppScaffold(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                        Icon(Icons.Default.Settings, "Settings", tint = Color.White)
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, stringResource(R.string.sign_out), tint = Color.White)
                     }
@@ -213,6 +230,12 @@ fun NewtonHouseAppScaffold(
                         studentName = "${activeChild.fullName} (${activeChild.gradeName})"
                     )
                 }
+                composable(Routes.TRANSPORT) {
+                    TransportScreen()
+                }
+                composable(Routes.WELLNESS) {
+                    WellnessScreen(session = session)
+                }
                 composable(Routes.CONTACTS) {
                     ContactsScreen()
                 }
@@ -224,6 +247,17 @@ fun NewtonHouseAppScaffold(
                 }
                 composable(Routes.ADMIN) {
                     AdminScreen()
+                }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        session = session,
+                        ttsEnabled = ttsEnabled,
+                        onToggleTts = {
+                            ttsEnabled = !ttsEnabled
+                            if (!ttsEnabled) ttsEngine?.stop()
+                        },
+                        onLogout = onLogout
+                    )
                 }
             }
 

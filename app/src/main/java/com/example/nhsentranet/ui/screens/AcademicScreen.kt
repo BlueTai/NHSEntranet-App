@@ -24,6 +24,39 @@ fun AcademicScreen(
     studentId: Int,
     academicViewModel: AcademicViewModel
 ) {
+    if (session.role == UserRoles.Teacher || session.role == UserRoles.HeadOfDepartment) {
+        TeacherAcademicView(session)
+    } else {
+        StudentAcademicView(session = session, studentId = studentId, academicViewModel = academicViewModel)
+    }
+}
+
+@Composable
+fun TeacherAcademicView(session: UserSession) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Teacher Academic Portal", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NewtonNavy)
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Assigned Classes", fontWeight = FontWeight.Bold, color = NewtonNavy)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("• Grade 10A Mathematics (24 Students)", fontSize = 13.sp, color = NewtonTextDark)
+                Text("• Grade 10B Mathematics (22 Students)", fontSize = 13.sp, color = NewtonTextDark)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = NewtonTealPrimary)) {
+                    Text("View Class Assessments")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StudentAcademicView(
+    session: UserSession,
+    studentId: Int,
+    academicViewModel: AcademicViewModel
+) {
     val marks by academicViewModel.marks.collectAsState()
     val selectedTab by academicViewModel.selectedTab.collectAsState()
     val subjectSelection = remember { mutableStateListOf("Mathematics", "Physical Sciences", "Information Technology") }

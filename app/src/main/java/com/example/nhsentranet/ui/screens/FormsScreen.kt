@@ -7,6 +7,7 @@ import android.webkit.WebViewClient
 import android.net.http.SslError
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,63 +51,97 @@ fun FormsScreen(isAdmin: Boolean, studentName: String = "John Johnson (Grade 10A
 @Composable
 fun ExpandedNativeForm(studentName: String) {
     val scope = rememberCoroutineScope()
+    var selectedForm by remember { mutableStateOf("Medical Consent") }
+    val formTypes = listOf("Medical Consent", "Photo/Video Release", "Transport Indemnity")
+
     var parentOccupation by remember { mutableStateOf("Civil Engineer") }
     var medicalAid by remember { mutableStateOf("Discovery Health #90214820") }
     var allergies by remember { mutableStateOf("Penicillin, Peanuts") }
+    var doctorName by remember { mutableStateOf("Dr. Smith") }
     var transportDriver by remember { mutableStateOf("David Miller (Contact: 082 555 1234)") }
     
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("Student Medical & Transport Consent", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF0B2240))
-        Text("Complete annual POPIA & medical updates", fontSize = 12.sp, color = Color(0xFF64748B))
+        Text("Digital Consents & Forms", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF0B2240))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            formTypes.forEach { form ->
+                FilterChip(
+                    selected = selectedForm == form,
+                    onClick = { selectedForm = form; statusMessage = null },
+                    label = { Text(form, fontSize = 12.sp) }
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         
         OutlinedTextField(
             value = studentName,
             onValueChange = {},
-            label = { Text("Student Name (Auto-populated)") },
+            label = { Text("Learner Full Name (Auto-populated)") },
             enabled = false,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp)
         )
         Spacer(modifier = Modifier.height(10.dp))
-        
-        OutlinedTextField(
-            value = parentOccupation,
-            onValueChange = { parentOccupation = it },
-            label = { Text("Parent Occupation") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
 
-        OutlinedTextField(
-            value = medicalAid,
-            onValueChange = { medicalAid = it },
-            label = { Text("Medical Aid Scheme & Number") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        
-        OutlinedTextField(
-            value = allergies,
-            onValueChange = { allergies = it },
-            label = { Text("Student Allergies & Medical Conditions") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        
-        OutlinedTextField(
-            value = transportDriver,
-            onValueChange = { transportDriver = it },
-            label = { Text("Transport Driver Name & Contact Details") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
-        )
+        when (selectedForm) {
+            "Medical Consent" -> {
+                OutlinedTextField(
+                    value = medicalAid,
+                    onValueChange = { medicalAid = it },
+                    label = { Text("Medical Aid Scheme & Number") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = doctorName,
+                    onValueChange = { doctorName = it },
+                    label = { Text("Family Practitioner / Doctor Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = allergies,
+                    onValueChange = { allergies = it },
+                    label = { Text("Student Allergies & Medical Conditions") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
+            "Photo/Video Release" -> {
+                Text(
+                    text = "I consent to the use by Newton House School of the image, video, voice, or audio of my child for official school publications and portal media.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF1E293B),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            "Transport Indemnity" -> {
+                OutlinedTextField(
+                    value = transportDriver,
+                    onValueChange = { transportDriver = it },
+                    label = { Text("Transport Driver Name & Contact Details") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "I hereby grant permission for my child to travel using the official Newton House School transport service.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B)
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         Text("Digital Consent Signature:", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E293B))
@@ -142,14 +177,14 @@ fun ExpandedNativeForm(studentName: String) {
                 scope.launch {
                     val res = NewtonFirebaseDatabase.submitForm(
                         studentName = studentName,
-                        formType = "Medical & Transport",
+                        formType = selectedForm,
                         parentOccupation = parentOccupation,
                         allergies = allergies,
                         driverInfo = transportDriver
                     )
                     isSaving = false
                     res.onSuccess {
-                        statusMessage = "Form saved to database & PDF report card generated successfully."
+                        statusMessage = "Consent receipt generated and saved as PDF."
                     }.onFailure { err ->
                         statusMessage = err.message
                     }
@@ -163,7 +198,7 @@ fun ExpandedNativeForm(studentName: String) {
             if (isSaving) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             } else {
-                Text("Save & Download as PDF", fontWeight = FontWeight.Bold)
+                Text("Sign Digitally & Download PDF", fontWeight = FontWeight.Bold)
             }
         }
     }
