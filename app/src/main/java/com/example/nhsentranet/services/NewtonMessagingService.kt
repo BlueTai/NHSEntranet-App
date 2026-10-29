@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.graphics.BitmapFactory
 import androidx.core.app.NotificationCompat
 import com.example.nhsentranet.MainActivity
 import com.example.nhsentranet.R
@@ -39,7 +40,8 @@ class NewtonMessagingService : FirebaseMessagingService() {
         )
 
         val builder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.ic_school_logo)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.newton_house_logo))
             .setContentTitle(title)
             .setContentText(message)
             .setAutoCancel(true)

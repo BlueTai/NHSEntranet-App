@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -149,9 +151,11 @@ fun NewtonHouseAppScaffold(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_school_logo),
-                            contentDescription = "Newton House Crest",
-                            modifier = Modifier.size(32.dp)
+                            painter = painterResource(id = R.drawable.newton_house_logo),
+                            contentDescription = "Newton House Logo",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
