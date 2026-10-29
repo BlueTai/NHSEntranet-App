@@ -1,5 +1,6 @@
 package com.example.nhsentranet.data
 
+import android.net.Uri
 import com.example.nhsentranet.model.IncidentDto
 import com.example.nhsentranet.model.InvoiceSummaryModel
 import com.example.nhsentranet.model.LinkedChildDto
@@ -11,6 +12,7 @@ import com.example.nhsentranet.model.UserSession
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -248,6 +250,34 @@ class NewtonFirebaseRepository private constructor() {
         listOf(
             IncidentDto(1, "John Johnson", "Behavior", "Late for morning registration", 1, "Open", "Today")
         )
+    }
+
+    private val storage by lazy { FirebaseStorage.getInstance().reference }
+
+    suspend fun uploadMediaAndSaveToDatabase(
+        fileUri: android.net.Uri,
+        title: String,
+        mediaType: String,
+        fileName: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val storageRef = storage.child("media/$fileName")
+            storageRef.putFile(fileUri).await()
+            val downloadUrl = storageRef.downloadUrl.await().toString()
+
+            val newDoc = db.collection("media").document()
+            newDoc.set(mapOf(
+                "mediaID" to (1000..9999).random(),
+                "fileURL" to downloadUrl,
+                "mediaType" to mediaType,
+                "description" to title,
+                "uploadedAt" to System.currentTimeMillis()
+            )).await()
+
+            Result.success("File uploaded to Firebase successfully!")
+        } catch (e: Exception) {
+            Result.failure(Exception("Upload failed: ${e.message}"))
+        }
     }
 
     suspend fun getMedia(): List<com.example.nhsentranet.model.MediaDto> = withContext(Dispatchers.IO) {

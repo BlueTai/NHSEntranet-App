@@ -1,10 +1,14 @@
 package com.example.nhsentranet.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.SslErrorHandler
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.net.http.SslError
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -17,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -45,11 +50,33 @@ fun FormsScreen(isAdmin: Boolean, studentName: String = "John Johnson (Grade 10A
     }
 }
 
+fun openPdfDocument(context: Context, fileUrl: String) {
+    val pdfUri = Uri.parse(fileUrl)
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(pdfUri, "application/pdf")
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        val browserIntent = Intent(Intent.ACTION_VIEW, pdfUri).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(browserIntent)
+        } catch (_: Exception) {
+            Toast.makeText(context, "Opening document in browser...", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
 // -----------------------------------------------------
 // EXPANDED DATA CAPTURE FIELDS & PDF SAVE (Section 4 Requirement)
 // -----------------------------------------------------
 @Composable
 fun ExpandedNativeForm(studentName: String) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedForm by remember { mutableStateOf("Medical Consent") }
     val formTypes = listOf("Medical Consent", "Photo/Video Release", "Transport Indemnity")
@@ -185,6 +212,7 @@ fun ExpandedNativeForm(studentName: String) {
                     isSaving = false
                     res.onSuccess {
                         statusMessage = "Consent receipt generated and saved as PDF."
+                        openPdfDocument(context, "https://firebasestorage.googleapis.com/v0/b/newton-house.appspot.com/o/consent_receipt.pdf?alt=media")
                     }.onFailure { err ->
                         statusMessage = err.message
                     }
