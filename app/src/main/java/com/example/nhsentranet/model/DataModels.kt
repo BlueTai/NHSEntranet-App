@@ -113,6 +113,28 @@ data class DashboardStatsDto(
     val pendingMarking: Int = 0
 )
 
+data class ClassDto(
+    val classID: Int,
+    val gradeID: Int,
+    val gradeLevel: String?,
+    val classSymbol: String?,
+    val classTeacherStaffID: Int?,
+    val classTeacherName: String?,
+    val studentCount: Int = 0
+)
+
+data class GradeDto(
+    val gradeID: Int,
+    val gradeLevel: String,
+    val studentCount: Int = 0,
+    val classes: List<ClassDto>? = emptyList()
+)
+
+data class ClassTeacherAssignmentDto(
+    val classID: Int,
+    val staffID: Int
+)
+
 // People DTOs
 data class StaffDto(
     val staffID: Int,

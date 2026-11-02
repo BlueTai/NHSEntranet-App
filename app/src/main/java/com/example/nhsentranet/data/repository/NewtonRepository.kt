@@ -1,5 +1,6 @@
 package com.example.nhsentranet.data.repository
 
+import com.example.nhsentranet.model.*
 import com.example.nhsentranet.network.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody

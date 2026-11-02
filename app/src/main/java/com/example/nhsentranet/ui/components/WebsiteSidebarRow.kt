@@ -36,7 +36,6 @@ fun WebsiteSidebarRow(
             .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left vertical teal bar indicator on active item
         if (isSelected) {
             Box(
                 modifier = Modifier

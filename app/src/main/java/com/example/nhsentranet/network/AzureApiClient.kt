@@ -1,39 +1,14 @@
 package com.example.nhsentranet.network
 
-import com.example.nhsentranet.model.AcademicTrendPointDto
-import com.example.nhsentranet.model.ApiResponse
-import com.example.nhsentranet.model.AssessmentDto
-import com.example.nhsentranet.model.AssessmentItemDto
-import com.example.nhsentranet.model.CalendarEventDto
-import com.example.nhsentranet.model.ConsentCurrentDto
-import com.example.nhsentranet.model.ConsentReceiptDto
-import com.example.nhsentranet.model.CreateNoticeDto
-import com.example.nhsentranet.model.CreateStudentWithParentDto
-import com.example.nhsentranet.model.DashboardStatsDto
-import com.example.nhsentranet.model.InvoiceSummaryDto
-import com.example.nhsentranet.model.LearningSupportUpdateDto
-import com.example.nhsentranet.model.LinkedChildDto
-import com.example.nhsentranet.model.LocationDto
-import com.example.nhsentranet.model.MarkRecordDto
-import com.example.nhsentranet.model.MediaDto
-import com.example.nhsentranet.model.MobileLoginDto
-import com.example.nhsentranet.model.NoticeDto
-import com.example.nhsentranet.model.ReportCardSummaryDto
-import com.example.nhsentranet.model.SignConsentRequest
-import com.example.nhsentranet.model.StaffDto
-import com.example.nhsentranet.model.StudentDto
-import com.example.nhsentranet.model.SubjectSummaryDto
-import com.example.nhsentranet.model.TeacherCommentSummaryDto
-import com.example.nhsentranet.model.TeacherContactDto
-import com.example.nhsentranet.model.TeacherSummaryDto
-import com.example.nhsentranet.model.UserRoles
-import com.example.nhsentranet.model.UserSession
+import com.example.nhsentranet.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
+import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -41,23 +16,17 @@ import retrofit2.http.*
 import java.util.concurrent.TimeUnit
 
 interface NewtonAzureApi {
-    @POST("api/Auth/login")
-    suspend fun login(@Body dto: MobileLoginDto): Response<ApiResponse<UserSession>>
-
     @GET("api/Dashboard/stats")
     suspend fun getDashboardStats(): Response<ApiResponse<DashboardStatsDto>>
+
+    @GET("api/Academic/grades")
+    suspend fun getGrades(): Response<ApiResponse<List<GradeDto>>>
 
     @GET("api/People/staff")
     suspend fun getStaff(): Response<ApiResponse<List<StaffDto>>>
 
     @GET("api/People/students")
     suspend fun getStudents(): Response<ApiResponse<List<StudentDto>>>
-
-    @GET("api/People/students/by-user/{userId}")
-    suspend fun getStudentIdByUserId(@Path("userId") userId: Int): Response<ApiResponse<Int?>>
-
-    @GET("api/People/students/by-parent-user/{userId}")
-    suspend fun getFirstChildIdByParentUserId(@Path("userId") userId: Int): Response<ApiResponse<Int?>>
 
     @GET("api/People/contacts")
     suspend fun getContacts(): Response<ApiResponse<List<TeacherContactDto>>>
@@ -121,15 +90,31 @@ interface NewtonAzureApi {
 
     @POST("api/Admin/students/with-parent")
     suspend fun createStudentWithParent(@Body dto: CreateStudentWithParentDto): Response<ApiResponse<Boolean>>
+
+    @POST("api/Admin/allocations/class-teacher")
+    suspend fun assignClassTeacher(@Body dto: ClassTeacherAssignmentDto): Response<ApiResponse<Boolean>>
+
+    @POST("api/Operations/navigator-chat")
+    suspend fun sendChatMessage(
+        @Header("Authorization") token: String?,
+        @Body message: ChatRequest
+    ): Response<ApiResponse<ChatResponse>>
 }
 
 object AzureApiClient {
     const val WEB_URL = "https://newtonhouse-web-ewb8bwd8awcudvc6.southafricanorth-01.azurewebsites.net/"
     const val BASE_URL = "https://newtonhouse-api-fae2h7d7ezb5arfn.southafricanorth-01.azurewebsites.net/"
+    const val API_KEY = "AQ.Ab8RN6LM5qBOAFzcHxo1thleVBYuhDchKoxzEfybE-Y5cfk5VQ"
 
     private val sharedCookies = mutableMapOf<String, Cookie>()
 
     val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("X-API-Key", API_KEY)
+                .build()
+            chain.proceed(request)
+        }
         .cookieJar(object : CookieJar {
             override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
                 for (c in cookies) {
@@ -138,21 +123,7 @@ object AzureApiClient {
             }
 
             override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                val list = mutableListOf<Cookie>()
-                for (c in sharedCookies.values) {
-                    try {
-                        val remapped = Cookie.Builder()
-                            .name(c.name)
-                            .value(c.value)
-                            .domain(url.host)
-                            .path("/")
-                            .build()
-                        list.add(remapped)
-                    } catch (_: Exception) {
-                        list.add(c)
-                    }
-                }
-                return list
+                return sharedCookies.values.toList()
             }
         })
         .followRedirects(true)
@@ -172,66 +143,47 @@ object AzureApiClient {
 
     fun clearSession() = sharedCookies.clear()
 
-    fun hasAuthCookie(): Boolean = sharedCookies.containsKey("NewtonHouse.Core.Auth") || sharedCookies.keys.any { it.contains("Auth") || it.contains("Identity") || it.contains("Session") }
+    fun hasAuthCookie(): Boolean = sharedCookies.containsKey("NewtonHouse.Core.Auth")
 
     suspend fun loginViaWebsiteBridge(username: String, pass: String): Result<UserSession> = withContext(Dispatchers.IO) {
         try {
             clearSession()
 
-            // 1. Try Direct API Login
-            try {
-                val apiRes = api.login(MobileLoginDto(username.trim(), pass))
-                if (apiRes.isSuccessful && apiRes.body()?.success == true && apiRes.body()?.data != null) {
-                    return@withContext Result.success(apiRes.body()!!.data!!)
-                }
-            } catch (_: Exception) {}
+            val getReq = Request.Builder()
+                .url("${WEB_URL}Login")
+                .header("User-Agent", "NewtonHouseMobile/1.0")
+                .get()
+                .build()
 
-            // 2. Try Web Bridge Login across common MVC/Identity endpoints
-            val loginPaths = listOf("Login", "Account/Login", "Identity/Account/Login")
+            val getRes = okHttpClient.newCall(getReq).execute()
+            val html = getRes.body?.string() ?: ""
 
-            for (path in loginPaths) {
-                try {
-                    val getReq = okhttp3.Request.Builder()
-                        .url("$WEB_URL$path")
-                        .header("User-Agent", "NewtonHouseMobile/1.0")
-                        .get()
-                        .build()
+            val tokenRegex = Regex("""name="__RequestVerificationToken"[^>]*value="([^"]+)"""")
+            val csrfToken = tokenRegex.find(html)?.groupValues?.get(1) ?: ""
 
-                    val getRes = okHttpClient.newCall(getReq).execute()
-                    val html = getRes.body?.string() ?: ""
-
-                    val tokenRegex = Regex("""name="__RequestVerificationToken"[^>]*value="([^"]+)"""")
-                    val csrfToken = tokenRegex.find(html)?.groupValues?.get(1) ?: ""
-
-                    val formBody = okhttp3.FormBody.Builder()
-                        .add("Username", username.trim())
-                        .add("Input.Username", username.trim())
-                        .add("Email", username.trim())
-                        .add("Input.Email", username.trim())
-                        .add("Password", pass)
-                        .add("Input.Password", pass)
-                        .apply {
-                            if (csrfToken.isNotEmpty()) {
-                                add("__RequestVerificationToken", csrfToken)
-                            }
-                        }
-                        .build()
-
-                    val postReq = okhttp3.Request.Builder()
-                        .url("$WEB_URL$path")
-                        .header("User-Agent", "NewtonHouseMobile/1.0")
-                        .header("Referer", "$WEB_URL$path")
-                        .post(formBody)
-                        .build()
-
-                    val postRes = okHttpClient.newCall(postReq).execute()
-                    if (hasAuthCookie() || postRes.isSuccessful) {
-                        break
+            val formBody = FormBody.Builder()
+                .add("Username", username.trim())
+                .add("Password", pass)
+                .apply {
+                    if (csrfToken.isNotEmpty()) {
+                        add("__RequestVerificationToken", csrfToken)
                     }
-                } catch (_: Exception) {}
+                }
+                .build()
+
+            val postReq = Request.Builder()
+                .url("${WEB_URL}Login")
+                .header("User-Agent", "NewtonHouseMobile/1.0")
+                .header("Referer", "${WEB_URL}Login")
+                .post(formBody)
+                .build()
+
+            okHttpClient.newCall(postReq).execute()
+
+            if (!hasAuthCookie()) {
+                return@withContext Result.failure(Exception("Invalid username or password on newtonhouse-web."))
             }
 
-            // 3. Verify if Auth Cookie exists or query Dashboard stats
             val statsRes = api.getDashboardStats()
             if (statsRes.isSuccessful && statsRes.body()?.data != null) {
                 val stats = statsRes.body()!!.data!!
@@ -245,8 +197,8 @@ object AzureApiClient {
                         val allStudents = stuRes.body()!!.data!!
                         val matching = if (role == UserRoles.Student) {
                             allStudents.filter {
-                                (it.fullname ?: "").equals(fullName, ignoreCase = true) ||
-                                (it.studentNumber ?: "").equals(username.trim(), ignoreCase = true)
+                                it.fullname.equals(fullName, ignoreCase = true) ||
+                                it.studentNumber.equals(username.trim(), ignoreCase = true)
                             }
                         } else {
                             allStudents.take(4)
@@ -257,7 +209,7 @@ object AzureApiClient {
                                 LinkedChildDto(
                                     studentId = s.studentID,
                                     fullName = s.fullname ?: "Student #${s.studentID}",
-                                    gradeName = "Grade ${s.gradeLevel ?: "10"}${s.classSymbol ?: "A"}"
+                                    gradeName = "${s.gradeLevel ?: "Grade 10"} ${s.classSymbol ?: "A"}".trim()
                                 )
                             )
                         }
@@ -278,13 +230,9 @@ object AzureApiClient {
                         linkedChildren = children
                     )
                 )
+            } else {
+                return@withContext Result.failure(Exception("Authenticated on web, but API returned HTTP ${statsRes.code()}."))
             }
-
-            if (!hasAuthCookie()) {
-                return@withContext Result.failure(Exception("Invalid username or password."))
-            }
-
-            return@withContext Result.failure(Exception("Authentication succeeded, but failed to retrieve user session details."))
         } catch (e: Exception) {
             return@withContext Result.failure(e)
         }

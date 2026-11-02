@@ -25,12 +25,12 @@ import androidx.compose.ui.unit.sp
 import com.example.nhsentranet.R
 import com.example.nhsentranet.model.ChatMessage
 import com.example.nhsentranet.model.UserSession
-import com.example.nhsentranet.ui.theme.NewtonBorder
-import com.example.nhsentranet.ui.theme.NewtonNavy
-import com.example.nhsentranet.ui.theme.NewtonSlateBg
-import com.example.nhsentranet.ui.theme.NewtonTealPrimary
-import com.example.nhsentranet.ui.theme.NewtonTextDark
+import com.example.nhsentranet.network.AzureApiClient
+import com.example.nhsentranet.network.ChatRequest
+import com.example.nhsentranet.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun NavigatorChatWidget(
@@ -44,23 +44,96 @@ fun NavigatorChatWidget(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
-    val messages = remember { mutableStateListOf(ChatMessage("Hi ${session.fullName}! Ask me for marks, fees, notices, or forms.", false)) }
+    var isThinking by remember { mutableStateOf(false) }
+
+    val messages = remember {
+        mutableStateListOf(
+            ChatMessage("Hi ${session.fullName}! Ask me about marks, fees, timetable, transport, or forms.", false)
+        )
+    }
 
     fun handleSend(query: String) {
         val q = query.trim()
-        if (q.isEmpty()) return
+        if (q.isEmpty() || isThinking) return
+
         messages.add(ChatMessage(q, true))
         input = ""
-        val lower = q.lowercase()
-        val reply = when {
-            lower.contains("mark") -> ChatMessage("Opening Academic Centre.", false, "academic", "Open Academic")
-            lower.contains("fee") || lower.contains("proof") -> ChatMessage("Viewing Invoices.", false, "invoices", "View Invoices")
-            lower.contains("map") -> ChatMessage("Opening Campus Maps.", false, "maps", "Campus Maps")
-            else -> ChatMessage("I can help you navigate.", false, "dashboard", "Dashboard")
+        isThinking = true
+
+        scope.launch {
+            listState.animateScrollToItem(messages.size - 1)
+
+            var aiReplyText = ""
+            var routeTarget: String? = null
+            var actionLabelText: String? = null
+
+            // 1. Attempt Gemini AI request via Azure API backend (/api/Operations/navigator-chat)
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    AzureApiClient.api.sendChatMessage("Bearer ${session.token}", ChatRequest(q))
+                }
+                if (res.isSuccessful && res.body()?.data != null) {
+                    val data = res.body()!!.data!!
+                    aiReplyText = data.reply
+                    routeTarget = data.route
+                }
+            } catch (_: Exception) {}
+
+            // 2. Intelligent local fallback with deep links
+            if (aiReplyText.isBlank()) {
+                val lower = q.lowercase()
+                when {
+                    lower.contains("mark") || lower.contains("grade") || lower.contains("report") -> {
+                        aiReplyText = "Opening the Academic Centre to view ${session.fullName}'s latest assessment marks."
+                        routeTarget = "/Academic"
+                        actionLabelText = "Open Academic Centre"
+                    }
+                    lower.contains("fee") || lower.contains("invoice") || lower.contains("pay") || lower.contains("proof") -> {
+                        aiReplyText = "Navigating to Invoices & Fees statement."
+                        routeTarget = "/Invoices"
+                        actionLabelText = "View Fee Invoices"
+                    }
+                    lower.contains("form") || lower.contains("consent") || lower.contains("popia") || lower.contains("medical") -> {
+                        aiReplyText = "Opening Digital Consent Forms to complete annual medical and indemnity consents."
+                        routeTarget = "/Forms"
+                        actionLabelText = "Open Consent Forms"
+                    }
+                    lower.contains("bus") || lower.contains("transport") || lower.contains("route") -> {
+                        aiReplyText = "Viewing live transport bus routes and driver contacts."
+                        routeTarget = "/Transport"
+                        actionLabelText = "View Bus Routes"
+                    }
+                    lower.contains("map") || lower.contains("campus") || lower.contains("location") -> {
+                        aiReplyText = "Opening Randburg campus maps and drop-off zone locations."
+                        routeTarget = "/Maps"
+                        actionLabelText = "Campus Maps"
+                    }
+                    lower.contains("notice") || lower.contains("alert") || lower.contains("exam") || lower.contains("circular") -> {
+                        aiReplyText = "Opening School Notice Board for exam schedules and alerts."
+                        routeTarget = "/Notices"
+                        actionLabelText = "View Notices"
+                    }
+                    lower.contains("contact") || lower.contains("phone") || lower.contains("email") || lower.contains("teacher") -> {
+                        aiReplyText = "Viewing Staff Directory & Emergency Contacts."
+                        routeTarget = "/Contacts"
+                        actionLabelText = "Staff Directory"
+                    }
+                    else -> {
+                        aiReplyText = "I'm Newton Navigator AI. I can guide you to marks, fee statements, bus routes, or school notices."
+                        routeTarget = "/Dashboard"
+                        actionLabelText = "Go to Dashboard"
+                    }
+                }
+            } else if (routeTarget != null) {
+                actionLabelText = "Open Section"
+            }
+
+            isThinking = false
+            val chatReply = ChatMessage(aiReplyText, false, routeTarget, actionLabelText)
+            messages.add(chatReply)
+            onSpeak(aiReplyText)
+            listState.animateScrollToItem(messages.size - 1)
         }
-        messages.add(reply)
-        onSpeak(reply.text)
-        scope.launch { listState.animateScrollToItem(messages.size - 1) }
     }
 
     Card(
@@ -80,12 +153,28 @@ fun NavigatorChatWidget(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(R.string.newton_navigator),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.newton_navigator),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        color = Color(0xFF10B981),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = "Gemini AI",
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onToggleTts) {
                         Icon(
@@ -99,6 +188,7 @@ fun NavigatorChatWidget(
                     }
                 }
             }
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -135,7 +225,31 @@ fun NavigatorChatWidget(
                         }
                     }
                 }
+
+                if (isThinking) {
+                    item {
+                        Surface(
+                            color = Color.White,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, NewtonBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    color = NewtonTealPrimary,
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Gemini AI is processing...", fontSize = 12.sp, color = NewtonTextMuted)
+                            }
+                        }
+                    }
+                }
             }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,7 +265,10 @@ fun NavigatorChatWidget(
                         .weight(1f)
                         .height(46.dp)
                 )
-                IconButton(onClick = { handleSend(input) }) {
+                IconButton(
+                    onClick = { handleSend(input) },
+                    enabled = !isThinking && input.isNotBlank()
+                ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = NewtonNavy)
                 }
             }
