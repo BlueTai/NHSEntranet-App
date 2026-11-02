@@ -1,5 +1,6 @@
 package com.example.nhsentranet.network
 
+import com.example.nhsentranet.model.*
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers

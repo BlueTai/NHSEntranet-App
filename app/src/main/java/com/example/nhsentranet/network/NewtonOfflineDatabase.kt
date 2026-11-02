@@ -1,5 +1,6 @@
 package com.example.nhsentranet.network
 
+import com.example.nhsentranet.model.*
 import kotlinx.coroutines.delay
 
 object UserRoles {

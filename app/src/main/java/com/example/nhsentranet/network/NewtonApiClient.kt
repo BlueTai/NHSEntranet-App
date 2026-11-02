@@ -1,5 +1,7 @@
 package com.example.nhsentranet.network
 
+import com.example.nhsentranet.model.LinkedChildDto
+import com.example.nhsentranet.model.UserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -14,23 +16,6 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
-
-data class LinkedChildDto(
-    val studentId: Int = 0,
-    val fullName: String = "",
-    val gradeName: String = ""
-)
-
-data class UserSession(
-    val userId: Int = 0,
-    val username: String,
-    val fullName: String = "",
-    val role: String,
-    val token: String? = null,
-    val linkedChildren: List<LinkedChildDto> = emptyList()
-) {
-    val userRole: String get() = role
-}
 
 object NewtonApiClient {
 
@@ -86,8 +71,7 @@ object NewtonApiClient {
                     userId = json.optInt("userId", 0),
                     username = json.optString("username", username),
                     fullName = json.optString("fullName", username),
-                    role = json.optString("role", "Student"),
-                    token = json.optString("token").takeIf { it.isNotEmpty() }
+                    userRole = json.optString("role", "Student")
                 )
 
                 currentSession = session
@@ -112,7 +96,6 @@ object NewtonApiClient {
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
             authCookie?.let { setRequestProperty("Cookie", it) }
-            currentSession?.token?.let { setRequestProperty("Authorization", "Bearer $it") }
             connectTimeout = 6000
             readTimeout = 6000
         }
