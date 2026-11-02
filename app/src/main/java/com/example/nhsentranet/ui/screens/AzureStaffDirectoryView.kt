@@ -32,8 +32,8 @@ fun AzureStaffDirectoryView() {
         } catch (_: Exception) {}
         if (staffList.isEmpty()) {
             staffList = listOf(
-                StaffDto(1, "Jane Smith", "jsmith@newtonhouse.co.za", "Teacher", "011 794 2878"),
-                StaffDto(2, "Dr. Adams", "hod@newtonhouse.co.za", "HeadOfDepartment", "011 794 2879")
+                StaffDto(staffID = 1, fullname = "Jane Smith", email = "jsmith@newtonhouse.co.za", userRole = "Teacher", contactNumber = "011 794 2878"),
+                StaffDto(staffID = 2, fullname = "Dr. Adams", email = "hod@newtonhouse.co.za", userRole = "HeadOfDepartment", contactNumber = "011 794 2879")
             )
         }
         isLoading = false

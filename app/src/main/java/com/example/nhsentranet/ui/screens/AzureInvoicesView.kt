@@ -61,12 +61,12 @@ fun AzureInvoicesView(session: UserSession, selectedChild: LinkedChildDto) {
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, WebDivider), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text("${inv.invoiceNumber} • ${inv.feeTypeName}", fontWeight = FontWeight.Bold, color = WebCharcoalText)
-                        Text(inv.statusName, color = if (inv.balance <= 0.0) NewtonGreen else NewtonAmber, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("${inv.invoiceNumber ?: "INV-${inv.invoiceID}"} • ${inv.feeTypeName ?: "School Fee"}", fontWeight = FontWeight.Bold, color = WebCharcoalText)
+                        Text(inv.statusName ?: "Pending", color = if (inv.balance <= 0.0) NewtonGreen else NewtonAmber, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Amount: R${inv.amount.toInt()} | Paid: R${inv.amountPaid.toInt()} | Balance: R${inv.balance.toInt()}", fontSize = 13.sp, color = WebCharcoalText)
-                    Text("Due Date: ${inv.dueDate}", fontSize = 11.sp, color = WebSlateIcon)
+                    Text("Due Date: ${inv.dueDate ?: "N/A"}", fontSize = 11.sp, color = WebSlateIcon)
                 }
             }
         }

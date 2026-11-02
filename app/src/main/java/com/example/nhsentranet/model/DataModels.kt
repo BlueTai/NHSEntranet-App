@@ -1,6 +1,7 @@
 package com.example.nhsentranet.model
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.google.gson.annotations.SerializedName
 
 object UserRoles {
     const val Admin = "Admin"
@@ -93,7 +94,7 @@ data class UserSession(
 data class StaffStatsDto(val teachers: Int = 0, val support: Int = 0, val leadership: Int = 0)
 data class UpcomingAssessmentDto(val name: String?, val subject: String?, val dueDate: String?)
 data class DashboardNoticeDto(val title: String?, val date: String?)
-data class DashboardTimetableDto(val time: String?, val subject: String?, val teacher: String?)
+data class DashboardTimetableDto(val time: String? = null, val subject: String?, val teacher: String?)
 data class DashboardEventDto(val title: String?, val date: String?)
 
 data class DashboardStatsDto(
@@ -138,10 +139,25 @@ data class ClassTeacherAssignmentDto(
 // People DTOs
 data class StaffDto(
     val staffID: Int,
+    val userID: Int = 0,
+    val firstname: String? = null,
+    val lastname: String? = null,
     val fullname: String?,
     val email: String?,
     val userRole: String?,
-    val contactNumber: String?
+    val contactNumber: String?,
+    val isActive: Boolean = true
+)
+
+data class StudentAddressDto(
+    val addressID: Int = 0,
+    val parentID: Int = 0,
+    val addressType: String?,
+    val line1: String?,
+    val suburb: String?,
+    val city: String?,
+    val province: String?,
+    val postalCode: String?
 )
 
 data class StudentDto(
@@ -150,11 +166,17 @@ data class StudentDto(
     val studentNum: String? = studentNumber,
     val userID: Int = 0,
     val fullname: String?,
+    val email: String? = null,
+    val classID: Int = 0,
+    val classSymbol: String?,
     val gradeID: Int = 0,
     val gradeLevel: String?,
-    val classSymbol: String?,
     val classTeacher: String?,
-    val medicalAlert: String? = null
+    val medicalAlert: String? = null,
+    val emergencyName: String? = null,
+    val emergencyPhone: String? = null,
+    val wellnessFlag: Boolean = false,
+    val addresses: List<StudentAddressDto>? = emptyList()
 )
 
 data class TeacherContactDto(
@@ -174,13 +196,19 @@ data class CreateStudentWithParentDto(
     val password: String = "Student@123",
     val dob: String = "2010-05-12",
     val enrolmentDate: String = "2026-01-15",
-    val gradeID: Int = 1,
+    val classID: Int = 1,
+    val gradeID: Int? = 1,
     val parentFirstname: String,
     val parentLastname: String,
     val parentEmail: String,
     val parentPassword: String = "Parent@123",
     val parentPhone: String,
-    val parentRelationship: String = "Guardian"
+    val parentRelationship: String = "Guardian",
+    val parentAddressLine1: String = "123 Newton Road",
+    val parentAddressSuburb: String = "Randburg",
+    val parentAddressCity: String = "Johannesburg",
+    val parentAddressProvince: String = "Gauteng",
+    val parentAddressPostalCode: String = "2194"
 )
 
 // Operations & Calendar DTOs
@@ -189,7 +217,11 @@ data class NoticeDto(
     val noticeName: String,
     val noticeType: String,
     val description: String?,
+    val staffID: Int? = null,
     val staffName: String?,
+    val gradeID: Int? = null,
+    @SerializedName("gradeLevel", alternate = ["gradeName"])
+    val gradeLevel: String? = null,
     val datePosted: String,
     val isPinned: Boolean
 )
@@ -198,7 +230,31 @@ data class CreateNoticeDto(
     val noticeName: String,
     val noticeType: String = "General",
     val description: String,
+    val gradeID: Int? = null,
     val isPinned: Boolean = false
+)
+
+data class EventDto(
+    val eventID: Int = 0,
+    val title: String,
+    val subtitle: String?,
+    val eventType: String?,
+    val color: String? = null,
+    val eventDate: String,
+    val location: String?,
+    val isPublic: Boolean = true,
+    val createdByStaffID: Int? = null,
+    val createdByStaffName: String? = null
+)
+
+data class CreateEventDto(
+    val title: String,
+    val subtitle: String? = null,
+    val eventType: String = "General",
+    val color: String = "teal",
+    val eventDate: String = "2026-11-15T09:00:00Z",
+    val location: String? = "School Hall",
+    val isPublic: Boolean = true
 )
 
 data class CalendarEventDto(
@@ -218,24 +274,58 @@ data class MarkRecordDto(
     val assessmentName: String,
     val assessmentType: String,
     val markObtained: Double,
-    val totalMarks: Double
+    val totalMarks: Double,
+    val dateRecorded: String? = null
 )
 
 data class AssessmentItemDto(
     val assessmentID: Int,
-    val assessmentName: String,
+    @SerializedName("title", alternate = ["assessmentName"])
+    val title: String,
     val subject: String?,
     val dueDate: String?,
-    val totalMarks: Double,
+    @SerializedName("totalMark", alternate = ["totalMarks"])
+    val totalMark: Double?,
     val type: String?
 )
 
 data class SubjectSummaryDto(val subjectID: Int, val subjectName: String, val description: String?, val teacherName: String?, val currentMark: Double)
 data class TeacherSummaryDto(val staffID: Int, val fullName: String, val subject: String?, val email: String?, val phone: String?)
 data class AcademicTrendPointDto(val term: String, val overallAverage: Double)
-data class TeacherCommentSummaryDto(val commentID: Int, val commentText: String, val commentDate: String, val staffName: String?)
-data class LearningSupportUpdateDto(val updateID: Int, val studentID: Int, val title: String?, val categoryName: String?, val update: String?, val supportStaff: String?, val datePosted: String?)
-data class AssessmentDto(val assessmentID: Int, val assessmentName: String, val assessmentTypeCode: String?, val assessmentStatusCode: String?, val subjectName: String?, val gradeName: String?, val dueDate: String?, val totalMarks: Double)
+
+data class TeacherCommentSummaryDto(
+    val commentID: Int,
+    @SerializedName("comment", alternate = ["commentText"])
+    val comment: String,
+    val commentDate: String,
+    val staffName: String?
+)
+
+data class LearningSupportUpdateDto(
+    val updateID: Int,
+    val studentID: Int,
+    val title: String?,
+    val categoryID: Int = 0,
+    val categoryName: String?,
+    val update: String?,
+    val nextSteps: String? = null,
+    val supportStaff: String?,
+    val datePosted: String?
+)
+
+data class AssessmentDto(
+    val assessmentID: Int,
+    @SerializedName("title", alternate = ["assessmentName"])
+    val title: String,
+    val assessmentTypeCode: String?,
+    val assessmentStatusCode: String?,
+    val subjectName: String?,
+    @SerializedName("gradeLevel", alternate = ["gradeName"])
+    val gradeLevel: String?,
+    val dueDate: String?,
+    @SerializedName("totalMark", alternate = ["totalMarks"])
+    val totalMark: Double?
+)
 
 // Consent / Forms DTOs
 data class ConsentCurrentDto(
@@ -262,14 +352,14 @@ data class ConsentReceiptDto(
 // Payments DTOs
 data class InvoiceSummaryDto(
     val invoiceID: Int,
-    val invoiceNumber: String,
+    val invoiceNumber: String?,
     val studentName: String?,
-    val feeTypeName: String,
+    val feeTypeName: String?,
     val amount: Double,
     val amountPaid: Double,
     val balance: Double,
-    val statusName: String,
-    val dueDate: String
+    val statusName: String?,
+    val dueDate: String?
 )
 
 // Operations Media & Location DTOs
@@ -278,7 +368,11 @@ data class MediaDto(
     val fileURL: String = "",
     val mediaType: String = "",
     val description: String? = null,
-    val gradeName: String? = null,
+    val gradeID: Int? = null,
+    @SerializedName("gradeLevel", alternate = ["gradeName"])
+    val gradeLevel: String? = null,
+    val uploadedByStaffName: String? = null,
+    val eventDate: String? = null,
     val id: Int = mediaID,
     val title: String = description ?: "",
     val type: String = mediaType,
@@ -287,9 +381,11 @@ data class MediaDto(
 
 data class LocationDto(
     val locationID: Int,
-    val locationName: String,
-    val locationType: String?,
-    val mapURL: String?
+    @SerializedName("name", alternate = ["locationName"])
+    val name: String,
+    val description: String?,
+    val mapURL: String?,
+    val locationType: String? = "CampusPoint"
 )
 
 // Navigation DTO
@@ -365,7 +461,8 @@ data class ReportCardSummaryDto(
     val studentID: Int = 0,
     val term: String = "",
     val academicYear: Int = 2026,
-    val gradeName: String? = null,
+    @SerializedName("gradeLevel", alternate = ["gradeName"])
+    val gradeLevel: String? = null,
     val overallAverage: Double? = null,
     val statusCode: String? = null
 )

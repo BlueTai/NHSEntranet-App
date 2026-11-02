@@ -62,8 +62,8 @@ fun AzureMapsView() {
                     Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = WebTealBrand)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(loc.locationName, fontWeight = FontWeight.Bold, color = WebCharcoalText)
-                        Text(loc.locationType ?: "Campus Facility", fontSize = 12.sp, color = WebSlateIcon)
+                        Text(loc.name, fontWeight = FontWeight.Bold, color = WebCharcoalText)
+                        Text(loc.description ?: loc.locationType ?: "Campus Facility", fontSize = 12.sp, color = WebSlateIcon)
                     }
                 }
             }

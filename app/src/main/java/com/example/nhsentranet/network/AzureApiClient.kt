@@ -41,7 +41,10 @@ interface NewtonAzureApi {
     suspend fun deleteNotice(@Path("id") id: Int): Response<ApiResponse<Any>>
 
     @GET("api/Operations/events")
-    suspend fun getCalendarEvents(): Response<ApiResponse<List<CalendarEventDto>>>
+    suspend fun getCalendarEvents(): Response<ApiResponse<List<EventDto>>>
+
+    @POST("api/Operations/events")
+    suspend fun createCalendarEvent(@Body dto: CreateEventDto): Response<ApiResponse<EventDto>>
 
     @GET("api/Academic/assessments")
     suspend fun getAssessments(): Response<ApiResponse<List<AssessmentDto>>>

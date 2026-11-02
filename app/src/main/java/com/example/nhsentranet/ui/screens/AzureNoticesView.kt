@@ -38,7 +38,7 @@ fun AzureNoticesView(session: UserSession) {
                 if (res.isSuccessful && res.body()?.data != null) notices = res.body()!!.data!!
             } catch (_: Exception) {}
             if (notices.isEmpty()) {
-                notices = listOf(NoticeDto(1, "Term 4 Examination Timetable", "Academic", "Final examination schedules for Grades 8–12 have been published.", "Jane Smith", "2026-10-29", true))
+                notices = listOf(NoticeDto(noticeID = 1, noticeName = "Term 4 Examination Timetable", noticeType = "Academic", description = "Final examination schedules for Grades 8–12 have been published.", staffName = "Jane Smith", datePosted = "2026-10-29", isPinned = true))
             }
         }
     }
@@ -61,7 +61,7 @@ fun AzureNoticesView(session: UserSession) {
                                 if (title.isNotBlank() && desc.isNotBlank()) {
                                     scope.launch {
                                         try {
-                                            withContext(Dispatchers.IO) { AzureApiClient.api.createNotice(CreateNoticeDto(title, "General", desc, false)) }
+                                            withContext(Dispatchers.IO) { AzureApiClient.api.createNotice(CreateNoticeDto(noticeName = title, noticeType = "General", description = desc, isPinned = false)) }
                                         } catch (_: Exception) {}
                                         title = ""; desc = ""
                                         loadNotices()
