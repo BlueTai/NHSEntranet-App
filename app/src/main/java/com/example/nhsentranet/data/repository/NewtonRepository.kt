@@ -35,6 +35,45 @@ open class NewtonRepository(private val apiService: ApiService) {
         }
     }
 
+    open suspend fun getTeacherStudents(token: String, teacherId: Int): Result<List<com.example.nhsentranet.model.TeacherStudentDto>> {
+        return try {
+            val res = apiService.getTeacherStudents("Bearer $token", teacherId)
+            if (res.isSuccessful && res.body()?.success == true) {
+                Result.success(res.body()!!.data ?: emptyList())
+            } else {
+                Result.failure(Exception(res.body()?.message ?: "Unable to fetch teacher students"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    open suspend fun getReportCards(token: String, studentId: Int): Result<List<com.example.nhsentranet.model.ReportCardSummaryDto>> {
+        return try {
+            val res = apiService.getReportCards("Bearer $token", studentId)
+            if (res.isSuccessful && res.body()?.success == true) {
+                Result.success(res.body()!!.data ?: emptyList())
+            } else {
+                Result.failure(Exception(res.body()?.message ?: "Unable to fetch report cards"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    open suspend fun deleteNotice(token: String, noticeId: Int): Result<String> {
+        return try {
+            val res = apiService.deleteNotice("Bearer $token", noticeId)
+            if (res.isSuccessful && res.body()?.success == true) {
+                Result.success("Notice deleted successfully.")
+            } else {
+                Result.failure(Exception(res.body()?.message ?: "Delete notice failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     open suspend fun uploadProofOfPayment(
         token: String,
         invoiceId: Int,
@@ -81,6 +120,19 @@ open class NewtonRepository(private val apiService: ApiService) {
                 Result.success("Class Teacher assigned successfully.")
             } else {
                 Result.failure(Exception(res.body()?.message ?: "Assignment failed on server"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    open suspend fun createStudentWithParent(token: String, studentName: String, parentEmail: String): Result<String> {
+        return try {
+            val res = apiService.createStudentWithParent("Bearer $token", CreateStudentWithParentRequest(studentName, parentEmail))
+            if (res.isSuccessful && res.body()?.success == true) {
+                Result.success("Student and Parent profiles created and linked successfully.")
+            } else {
+                Result.failure(Exception(res.body()?.message ?: "Creation failed on server"))
             }
         } catch (e: Exception) {
             Result.failure(e)

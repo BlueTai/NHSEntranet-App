@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -207,6 +208,16 @@ fun NoticesScreen(
                                 color = NewtonNavy,
                                 modifier = Modifier.weight(1f)
                             )
+
+                            if (canPublish) {
+                                IconButton(
+                                    onClick = { noticesViewModel.loadNotices() },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Notice", tint = NewtonRed)
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
 
                             Surface(
                                 color = when (n.noticeType.lowercase()) {

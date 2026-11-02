@@ -81,6 +81,22 @@ data class MediaDto(
     val url: String
 )
 
+data class TeacherStudentDto(
+    val subjectID: Int,
+    val subjectName: String,
+    val studentID: Int,
+    val studentName: String,
+    val gradeName: String,
+    val currentMark: Double
+)
+
+data class ReportCardSummaryDto(
+    val reportCardID: Int,
+    val term: String,
+    val academicYear: Int,
+    val overallAverage: Double?
+)
+
 data class ChatMessage(
     val text: String,
     val isUser: Boolean,

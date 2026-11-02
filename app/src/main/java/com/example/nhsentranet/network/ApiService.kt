@@ -84,6 +84,11 @@ data class ClassTeacherAssignmentDto(
     val gradeID: Int
 )
 
+data class CreateStudentWithParentRequest(
+    val studentName: String,
+    val parentEmail: String
+)
+
 data class ChatRequest(val message: String)
 data class ChatResponse(val reply: String, val route: String?)
 
@@ -100,10 +105,28 @@ interface ApiService {
         @Path("studentId") studentId: Int
     ): Response<ApiResponse<List<MarkRecordDto>>>
 
+    @GET("api/Academic/teacher/{teacherId}/students")
+    suspend fun getTeacherStudents(
+        @Header("Authorization") token: String,
+        @Path("teacherId") teacherId: Int
+    ): Response<ApiResponse<List<com.example.nhsentranet.model.TeacherStudentDto>>>
+
+    @GET("api/Academic/student/{studentId}/report-cards")
+    suspend fun getReportCards(
+        @Header("Authorization") token: String,
+        @Path("studentId") studentId: Int
+    ): Response<ApiResponse<List<com.example.nhsentranet.model.ReportCardSummaryDto>>>
+
     @GET("api/Operations/notices")
     suspend fun getNotices(
         @Header("Authorization") token: String
     ): Response<ApiResponse<List<NoticeDto>>>
+
+    @DELETE("api/Operations/notices/{noticeId}")
+    suspend fun deleteNotice(
+        @Header("Authorization") token: String,
+        @Path("noticeId") noticeId: Int
+    ): Response<ApiResponse<Boolean>>
 
     @GET("api/Payments/student/{studentId}/invoices")
     suspend fun getInvoices(
@@ -130,6 +153,12 @@ interface ApiService {
     suspend fun assignClassTeacher(
         @Header("Authorization") token: String,
         @Body request: ClassTeacherAssignmentDto
+    ): Response<ApiResponse<Boolean>>
+
+    @POST("api/Admin/students/with-parent")
+    suspend fun createStudentWithParent(
+        @Header("Authorization") token: String,
+        @Body request: CreateStudentWithParentRequest
     ): Response<ApiResponse<Boolean>>
 
     @POST("api/Operations/navigator-chat")
