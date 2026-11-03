@@ -43,7 +43,12 @@ val mainSidebarItems = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WebsiteMatchedPortal(session: UserSession, onLogout: () -> Unit) {
+fun WebsiteMatchedPortal(
+    session: UserSession,
+    isDarkTheme: Boolean = false,
+    onToggleDarkTheme: () -> Unit = {},
+    onLogout: () -> Unit
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var currentRoute by remember { mutableStateOf("/Dashboard") }
@@ -159,7 +164,7 @@ fun WebsiteMatchedPortal(session: UserSession, onLogout: () -> Unit) {
                     "/Gallery" -> AzureGalleryView()
                     "/Maps" -> AzureMapsView()
                     "/Calendar" -> AzureCalendarView(selectedChild)
-                    "/Settings" -> AzureSettingsView(session, onLogout)
+                    "/Settings" -> AzureSettingsView(session, isDarkTheme, onToggleDarkTheme, onLogout)
                 }
             }
         }

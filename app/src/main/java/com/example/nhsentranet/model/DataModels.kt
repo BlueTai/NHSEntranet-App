@@ -328,6 +328,22 @@ data class AssessmentDto(
 )
 
 // Consent / Forms DTOs
+data class FormFieldDto(
+    val fieldName: String,
+    val label: String,
+    val type: String = "text",
+    val isRequired: Boolean = false,
+    val placeholder: String? = null,
+    val helpText: String? = null
+)
+
+data class LocalConsentFormDto(
+    val title: String,
+    val description: String,
+    val consentCode: String?,
+    val fields: List<FormFieldDto>
+)
+
 data class ConsentCurrentDto(
     val studentID: Int,
     val consentTypeID: Int,

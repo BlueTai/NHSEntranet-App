@@ -11,6 +11,16 @@ val WebSlateIcon = Color(0xFF52606D)        // Inactive outline icon tint
 val WebPageBg = Color(0xFFF4F8F9)           // Main content area light grey-cyan tint
 val WebDivider = Color(0xFFE2E8F0)          // Subtle border line
 
+// Dark Theme Color Palette
+val DarkHeaderCyan = Color(0xFF0F172A)
+val DarkActiveItemBg = Color(0xFF0F2E36)
+val DarkTealBrand = Color(0xFF2DD4BF)
+val DarkCharcoalText = Color(0xFFF1F5F9)
+val DarkSlateIcon = Color(0xFF94A3B8)
+val DarkPageBg = Color(0xFF0B1120)
+val DarkSurface = Color(0xFF1E293B)
+val DarkDivider = Color(0xFF334155)
+
 // Core Brand Colors
 val NewtonTeal = Color(0xFF129B9D)
 val NewtonCharcoal = Color(0xFF231F20)
