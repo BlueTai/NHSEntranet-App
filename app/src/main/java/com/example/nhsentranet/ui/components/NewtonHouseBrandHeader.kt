@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +26,7 @@ fun NewtonHouseBrandHeader(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(WebHeaderCyan)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -51,13 +52,13 @@ fun NewtonHouseBrandHeader(modifier: Modifier = Modifier) {
                 text = "Newton House",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = WebCharcoalText
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "S T U D E N T   I N T R A N E T",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = WebTealBrand,
+                color = MaterialTheme.colorScheme.primary,
                 letterSpacing = 1.2.sp
             )
         }

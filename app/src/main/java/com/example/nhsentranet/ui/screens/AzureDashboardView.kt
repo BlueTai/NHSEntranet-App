@@ -80,7 +80,7 @@ fun AzureDashboardView(
         // --- 1. WELCOME BANNER & CHILD SELECTOR ---
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, WebDivider),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -95,7 +95,7 @@ fun AzureDashboardView(
                                 "Welcome back, ${session.fullName}",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = WebCharcoalText
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text("Role: ${session.userRole}", fontSize = 12.sp, color = WebTealBrand, fontWeight = FontWeight.Medium)
@@ -481,7 +481,7 @@ fun MetricKpiCard(
     onClick: (() -> Unit)? = null
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, WebDivider),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)

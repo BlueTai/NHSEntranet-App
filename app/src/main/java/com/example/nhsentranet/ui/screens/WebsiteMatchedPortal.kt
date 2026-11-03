@@ -62,7 +62,7 @@ fun WebsiteMatchedPortal(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color.White,
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
                 drawerShape = RoundedCornerShape(topEnd = 0.dp, bottomEnd = 0.dp),
                 modifier = Modifier.width(300.dp)
             ) {
@@ -121,17 +121,17 @@ fun WebsiteMatchedPortal(
                                 ?: if (currentRoute == "/Settings") "Settings" else "Dashboard",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = WebCharcoalText
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Open Menu", tint = WebTealBrand)
+                            Icon(Icons.Default.Menu, contentDescription = "Open Menu", tint = MaterialTheme.colorScheme.primary)
                         }
                     },
                     actions = {
                         Surface(
-                            color = WebActiveItemBg,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.padding(end = 12.dp)
                         ) {
@@ -139,15 +139,15 @@ fun WebsiteMatchedPortal(
                                 text = "${session.fullName} (${session.userRole})",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = WebTealBrand,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = WebHeaderCyan)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 )
             },
-            containerColor = WebPageBg
+            containerColor = MaterialTheme.colorScheme.background
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 when (currentRoute) {
